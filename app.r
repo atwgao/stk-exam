@@ -17,10 +17,12 @@ library(reshape)
 library(png)
 library(grid)
 library(magick)
+library(ggpubr)
 ### STEP 1: Prep the Data
 
 # Read in the data
-setwd(dirname(rstudioapi::getSourceEditorContext()$path))
+#setwd(dirname(rstudioapi::getSourceEditorContext()$path))
+getwd()
 source('utils/image_ggplot.R')
 # Read in the data 
 churn <- read.csv('telcoData.csv')
