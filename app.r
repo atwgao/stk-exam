@@ -17,10 +17,11 @@ library(reshape)
 library(png)
 library(grid)
 library(magick)
+library(ggpubr)
 ### STEP 1: Prep the Data
 
 # Read in the data
-#churn <- read.csv('telcoData.csv')
+churn <- read.csv("C:\\Users\\User\\Downloads\\telcoData.csv")
 
 # Split data into train and test set
 intrain <- createDataPartition(churn$Churn,p=0.7,list=FALSE)
@@ -188,16 +189,26 @@ wc3 <- head(wc3,5)
 df4 <- data.frame('predictor4' = c('Contract', 'PaperlessBilling','InternetService','PaymentMethod','tenure_group'),
                   'values4' = c(310,280, 200,195,190))
 
-df5 <- data.frame(df5$importance)
-predictor5 <- row.names(df5)
-values5 <- df5$No
-xy5 <- data.frame(predictor5, values5)
-wc5 <- arrange(xy5, desc(values5))
-wc5 <- head(wc5,5)
+problems <- tryCatch({
+  
+  df5 <- data.frame(df5$importance)
+  predictor5 <- row.names(df5)
+  values5 <- df5$No
+  xy5 <- data.frame(predictor5, values5)
+  wc5 <- arrange(xy5, desc(values5))
+  wc5 <- head(wc5,5)
+  readLines(con = stdin(), warn = FALSE)
+  
+  }, error = function(cond){
+    message("This gives an error")
+    
+  }, probability <- TRUE
+  
+)
+
 
 df6 <- data.frame('Variable' = c('Contract','Tenure Group', 'Internet Service', 'Monthly Charge', 'Payment Method', 'Total Charges', 'Paperless Billing', 'Online Security'),
                   'Count' = c(5,4,3,3,3,2,2,1))
-
 
 ### STEP 5: Create the selection variables
 
@@ -205,13 +216,15 @@ model_choices <- c('Logistic Regression',
                   'Decision Tree',
                   'Random Forest',
                   'Naive Bayes',
-                  'K-Nearest Neighbor')
+                  'K-Nearest Neighbor',
+                  'All')
 
 colors <- c('blue',
             'orange',
             'green',
             'red',
-            'purple')
+            'purple',
+            'black')
 
 
 ### Step 6: Build the UI layout
@@ -246,6 +259,18 @@ ui = fluidPage(
 ### STEP 7: Build the server functionality
 
 server = function(input, output){
+  
+  image1 <- magick::image_read("C:\\Users\\User\\Downloads\\STK880_exam_part2_xander\\stk-exam\\error_message.png")
+  image_ggplot <- function(image, interpolate = FALSE) {
+    info <- image_info(image)
+    ggplot2::ggplot(data.frame(x = 0, y = 0), ggplot2::aes_string('x', 'y')) +
+      ggplot2::geom_blank() +
+      ggplot2::theme_void() +
+      ggplot2::scale_y_reverse() +
+      ggplot2::coord_fixed(expand = FALSE, xlim = c(0, info$width), ylim = c(0, info$height)) +
+      ggplot2::annotation_raster(image, 0, info$width, -info$height, 0, interpolate = interpolate) +
+      NULL
+  }
   
   output$uiModel <- renderUI({
     selectInput('model',
@@ -318,6 +343,55 @@ server = function(input, output){
              cex.axis = 1.25)
         abline(a=0, b=1)
         legend(.6, .4, auc5, title = "AUC", cex = 1.5)
+      }
+    else if (input$model == 'All') {
+      layout(matrix(c(1,2,3,4,5,0), 3, 2, byrow = TRUE))
+      #par(mfrow=c(5,1), mar=c(1,1,1,1))
+      plot(roc,
+           colorize = T,
+           main = paste("Logistic regression", "ROC Curve"), 
+           lwd = 5,
+           cex.main = 2,
+           cex.lab = 1.5,
+           cex.axis = 1.25)
+      abline(a=0, b=1)
+      legend(.6, .4, auc, title = "AUC", cex = 1.5)
+      plot(roc2,
+           colorize = T,
+           main = paste("Decision tree", "ROC Curve"),
+           lwd = 5,
+           cex.main = 2,
+           cex.lab = 1.5,
+           cex.axis = 1.25)
+      abline(a=0, b=1)
+      legend(.6, .4, auc2, title = "AUC", cex = 1.5)
+      plot(roc3,
+           colorize = T,
+           main = paste("Random forest", "ROC Curve"),
+           lwd = 5,
+           cex.main = 2,
+           cex.lab = 1.5,
+           cex.axis = 1.25)
+      abline(a=0, b=1)
+      legend(.6, .4, auc3, title = "AUC", cex = 1.5)
+      plot(roc4,
+           colorize = T,
+           main = paste("Naive Bayes", "ROC Curve"),
+           lwd = 5,
+           cex.main = 2,
+           cex.lab = 1.5,
+           cex.axis = 1.25)
+      abline(a=0, b=1)
+      legend(.6, .4, auc4, title = "AUC", cex = 1.5)
+      plot(roc5,
+           colorize = T,
+           main = paste("K-Nearest Neighbor", "ROC Curve"),
+           lwd = 5,
+           cex.main = 2,
+           cex.lab = 1.5,
+           cex.axis = 1.25)
+      abline(a=0, b=1)
+      legend(.6, .4, auc5, title = "AUC", cex = 1.5)
     }
   })
   
@@ -388,6 +462,70 @@ server = function(input, output){
         scale_y_continuous(breaks = scales::pretty_breaks(n = 20)) +
         geom_text(aes(label=round(value,3)), vjust=8, size=6.5, color = 'white', fontface = 'bold')
     } 
+      else if (input$model == 'All'){
+        newL <- subset(data.m, mod == 'Log Model')
+        LM<-ggplot(newL, aes(variable, value)) +
+          geom_bar(aes(fill = variable), position = "dodge", stat="identity") +
+          labs(title = 'Logistic Regression Measures', fill = 'Measure') +
+          theme(axis.title = element_blank(),
+                title = element_text(size = 20, face = 'bold'),
+                plot.title = element_text(hjust = 0.5),
+                axis.text = element_text(size = 14),
+                legend.text = element_text(size = 14)) +
+          scale_y_continuous(breaks = scales::pretty_breaks(n = 20)) +
+          geom_text(aes(label=round(value,3)), vjust=8, size=6.5, color = 'white', fontface = 'bold')
+        
+        newT <- subset(data.m, mod == 'Tree Model')
+        DT<-ggplot(newT, aes(variable, value)) +
+          geom_bar(aes(fill = variable), position = "dodge", stat="identity") +
+          labs(title = 'Decision Tree Measures', fill = 'Measure') +
+          theme(axis.title = element_blank(),
+                title = element_text(size = 20, face = 'bold'),
+                plot.title = element_text(hjust = 0.5),
+                axis.text = element_text(size = 14),
+                legend.text = element_text(size = 14)) +
+          scale_y_continuous(breaks = scales::pretty_breaks(n = 20)) +
+          geom_text(aes(label=round(value,3)), vjust=8, size=6.5, color = 'white', fontface = 'bold')
+      
+        newR <- subset(data.m, mod == 'Random Forest')
+        RF<-ggplot(newR, aes(variable, value)) +
+          geom_bar(aes(fill = variable), position = "dodge", stat="identity") +
+          labs(title = 'Random Forest Measures', fill = 'Measure') +
+          theme(axis.title = element_blank(),
+                title = element_text(size = 20, face = 'bold'),
+                plot.title = element_text(hjust = 0.5),
+                axis.text = element_text(size = 14),
+                legend.text = element_text(size = 14)) +
+          scale_y_continuous(breaks = scales::pretty_breaks(n = 20)) +
+          geom_text(aes(label=round(value,3)), vjust=8, size=6.5, color = 'white', fontface = 'bold')
+        
+        newN <- subset(data.m, mod == 'Naive Bayes')
+        NB<-ggplot(newN, aes(variable, value)) +
+          geom_bar(aes(fill = variable), position = "dodge", stat="identity") +
+          labs(title = 'Naive Bayes Measures', fill = 'Measure') +
+          theme(axis.title = element_blank(),
+                title = element_text(size = 20, face = 'bold'),
+                plot.title = element_text(hjust = 0.5),
+                axis.text = element_text(size = 14),
+                legend.text = element_text(size = 14)) +
+          scale_y_continuous(breaks = scales::pretty_breaks(n = 20)) +
+          geom_text(aes(label=round(value,3)), vjust=8, size=6.5, color = 'white', fontface = 'bold')
+        
+        newK <- subset(data.m, mod == 'K-NN')
+        KNN<-ggplot(newK, aes(variable, value)) +
+          geom_bar(aes(fill = variable), position = "dodge", stat="identity") +
+          labs(title = 'K-Nearest Neighbor Measures', fill = 'Measure') +
+          theme(axis.title = element_blank(),
+                title = element_text(size = 20, face = 'bold'),
+                plot.title = element_text(hjust = 0.5),
+                axis.text = element_text(size = 14),
+                legend.text = element_text(size = 14)) +
+          scale_y_continuous(breaks = scales::pretty_breaks(n = 20)) +
+          geom_text(aes(label=round(value,3)), vjust=8, size=6.5, color = 'white', fontface = 'bold')
+        
+        ggpubr::ggarrange(LM, DT, RF, NB, KNN, nrow=3, ncol=2)
+        
+    }  
   })
   
   output$Importance <- renderPlot({
@@ -435,7 +573,7 @@ server = function(input, output){
               legend.text = element_text(size = 14)) +
         labs(title = 'Naive Bayes Variable Importance', fill = 'Predictor')
     } 
-      else if (input$model == 'K-Nearest Neighbor') {
+      else if (probability != TRUE && input$model == 'K-Nearest Neighbor') {
         ggplot(wc5, aes(x = predictor5, y = values5)) +
           geom_col(aes(fill = predictor5)) +
           geom_text(aes(label=round(values5,0)), vjust = 2, size = 6.5, color = 'white', fontface = 'bold') +
@@ -446,6 +584,67 @@ server = function(input, output){
                 legend.text = element_text(size = 14)) +
           labs(title = 'K-Nearest Neighbor Variable Importance', fill = 'Predictor')
     } 
+      else if (probability == TRUE && input$model == 'K-Nearest Neighbor'){
+        image_ggplot(image1)
+    }   
+      else if (input$model == 'All'){
+        
+        LM<-ggplot(wc, aes(x = predictor, y = values)) +
+          geom_col(aes(fill = predictor)) +
+          geom_text(aes(label=round(values,2)), vjust = 2, size = 6.5, color = 'white', fontface = 'bold') +
+          theme(axis.title = element_blank(),
+                title = element_text(size = 20, face = 'bold'),
+                plot.title = element_text(hjust = 0.5),
+                axis.text = element_text(size = 14),
+                legend.text = element_text(size = 14)) +
+          labs(title = 'Logisitc Regression Variable Importance', fill = 'Predictor')
+        
+        DT<-ggplot(wc2, aes(x = predictor2, y = values2)) +
+          geom_col(aes(fill = predictor2)) +
+          geom_text(aes(label=round(values2,0)), vjust = 2, size = 6.5, color = 'white', fontface = 'bold') +
+          theme(axis.title = element_blank(),
+                title = element_text(size = 20, face = 'bold'),
+                plot.title = element_text(hjust = 0.5),
+                axis.text = element_text(size = 14),
+                legend.text = element_text(size = 14)) +
+          labs(title = 'Decision Tree Variable Importance', fill = 'Predictor')
+        
+        RF<-ggplot(wc3, aes(x = predictor3, y = values3)) +
+          geom_col(aes(fill = predictor3)) +
+          geom_text(aes(label=round(values3,0)), vjust = 2, size = 6.5, color = 'white', fontface = 'bold') +
+          theme(axis.title = element_blank(),
+                title = element_text(size = 20, face = 'bold'),
+                plot.title = element_text(hjust = 0.5),
+                axis.text = element_text(size = 14),
+                legend.text = element_text(size = 14)) +
+          labs(title = 'Random Forest Variable Importance',fill = 'Predictor')
+        
+        NB<-ggplot(df4, aes(x = predictor4, y = values4)) +
+          geom_col(aes(fill = predictor4)) +
+          geom_text(aes(label=round(values4,0)), vjust = 2, size = 6.5, color = 'white', fontface = 'bold') +
+          theme(axis.title = element_blank(),
+                title = element_text(size = 20, face = 'bold'),
+                plot.title = element_text(hjust = 0.5),
+                axis.text = element_text(size = 14),
+                legend.text = element_text(size = 14)) +
+          labs(title = 'Naive Bayes Variable Importance', fill = 'Predictor')
+        
+        if(probability == TRUE){
+          KNN <- image_ggplot(image1)
+        } else if (probability != TRUE) {
+          KNN <- ggplot(wc5, aes(x = predictor5, y = values5)) +
+            geom_col(aes(fill = predictor5)) +
+            geom_text(aes(label=round(values5,0)), vjust = 2, size = 6.5, color = 'white', fontface = 'bold') +
+            theme(axis.title = element_blank(),
+                  title = element_text(size = 20, face = 'bold'),
+                  plot.title = element_text(hjust = 0.5),
+                  axis.text = element_text(size = 14),
+                  legend.text = element_text(size = 14)) +
+            labs(title = 'K-Nearest Neighbor Variable Importance', fill = 'Predictor')
+        }
+        
+        ggpubr::ggarrange(LM, DT, RF, NB, KNN, ncol=2, nrow=3)
+    }
   })
 
 }
