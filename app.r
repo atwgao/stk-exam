@@ -1,3 +1,5 @@
+## STK 880 Exam ####
+## Deidre Bredenkamp 04639864 #####
 library(shiny)
 library(ggplot2)
 library(plyr)
