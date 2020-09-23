@@ -1,3 +1,5 @@
+testimage <- magick::image_read("C:/Users/User/Desktop/stk880_exam/Gao exam/stk-exam-master/error_message.png")
+
 image_ggplot <- function(image, interpolate = FALSE) {
   info <- image_info(image)
   ggplot2::ggplot(data.frame(x = 0, y = 0), ggplot2::aes_string('x', 'y')) +
@@ -8,3 +10,5 @@ image_ggplot <- function(image, interpolate = FALSE) {
     ggplot2::annotation_raster(image, 0, info$width, -info$height, 0, interpolate = interpolate) +
     NULL
 }
+
+image_ggplot(testimage)
