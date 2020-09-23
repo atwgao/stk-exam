@@ -261,7 +261,7 @@ server = function(input, output){
     selectInput('model',
                 'Select a model',
                 choices = model_choices,
-                selected = 'Logisitc Regression'
+                selected = 'Logistic Regression'
                 ) 
       })
   pred <- predict(tModel, churn, type = 'prob')
@@ -343,7 +343,7 @@ server = function(input, output){
                    cex.lab = 1.5,
                    cex.axis = 1.25)
         abline(a=0, b=1)
-        legend(.6, .4, auc5, title = "AUC", cex = 1.5)
+        legend(.6, .4, auc, title = "AUC", cex = 1.5)
       
         plot(roc2,
                    colorize = T,
@@ -353,7 +353,7 @@ server = function(input, output){
                    cex.lab = 1.5,
                    cex.axis = 1.25)
         abline(a=0, b=1)
-        legend(.6, .4, auc5, title = "AUC", cex = 1.5)
+        legend(.6, .4, auc2, title = "AUC", cex = 1.5)
       
         plot(roc3,
                    colorize = T,
@@ -363,7 +363,7 @@ server = function(input, output){
                    cex.lab = 1.5,
                    cex.axis = 1.25)
         abline(a=0, b=1)
-        legend(.6, .4, auc5, title = "AUC", cex = 1.5)
+        legend(.6, .4, auc3, title = "AUC", cex = 1.5)
 
         plot(roc4,
                    colorize = T,
@@ -373,7 +373,7 @@ server = function(input, output){
                    cex.lab = 1.5,
                    cex.axis = 1.25)
         abline(a=0, b=1)
-        legend(.6, .4, auc5, title = "AUC", cex = 1.5)
+        legend(.6, .4, auc4, title = "AUC", cex = 1.5)
         
         plot(roc5,
              colorize = T,
