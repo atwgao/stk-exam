@@ -188,12 +188,14 @@ wc3 <- head(wc3,5)
 df4 <- data.frame('predictor4' = c('Contract', 'PaperlessBilling','InternetService','PaymentMethod','tenure_group'),
                   'values4' = c(310,280, 200,195,190))
 
-df5 <- data.frame(df5$importance)
+##Neural net not compatible with caret::varImp; hence df5 not defined yet
+catch <- tryCatch({df5 <- data.frame(df5$importance)
 predictor5 <- row.names(df5)
 values5 <- df5$No
 xy5 <- data.frame(predictor5, values5)
 wc5 <- arrange(xy5, desc(values5))
-wc5 <- head(wc5,5)
+wc5 <- head(wc5,5)}, error = function(r_err_message){return(TRUE)}
+)
 
 df6 <- data.frame('Variable' = c('Contract','Tenure Group', 'Internet Service', 'Monthly Charge', 'Payment Method', 'Total Charges', 'Paperless Billing', 'Online Security'),
                   'Count' = c(5,4,3,3,3,2,2,1))
@@ -436,15 +438,22 @@ server = function(input, output){
         labs(title = 'Naive Bayes Variable Importance', fill = 'Predictor')
     } 
       else if (input$model == 'K-Nearest Neighbor') {
-        ggplot(wc5, aes(x = predictor5, y = values5)) +
-          geom_col(aes(fill = predictor5)) +
-          geom_text(aes(label=round(values5,0)), vjust = 2, size = 6.5, color = 'white', fontface = 'bold') +
-          theme(axis.title = element_blank(),
-                title = element_text(size = 20, face = 'bold'),
-                plot.title = element_text(hjust = 0.5),
-                axis.text = element_text(size = 14),
-                legend.text = element_text(size = 14)) +
-          labs(title = 'K-Nearest Neighbor Variable Importance', fill = 'Predictor')
+        ## Remove if(catch) once error is fixed
+        if(catch){
+          img <- image_read("error_message_reverse_y.png")
+          image_ggplot(img)
+        }
+        else{
+          ggplot(wc5, aes(x = predictor5, y = values5)) +
+            geom_col(aes(fill = predictor5)) +
+            geom_text(aes(label=round(values5,0)), vjust = 2, size = 6.5, color = 'white', fontface = 'bold') +
+            theme(axis.title = element_blank(),
+                  title = element_text(size = 20, face = 'bold'),
+                  plot.title = element_text(hjust = 0.5),
+                  axis.text = element_text(size = 14),
+                  legend.text = element_text(size = 14)) +
+            labs(title = 'K-Nearest Neighbor Variable Importance', fill = 'Predictor')
+        }
     } 
   })
 
