@@ -17,10 +17,11 @@ library(reshape)
 library(png)
 library(grid)
 library(magick)
+library(tidyverse)
 ### STEP 1: Prep the Data
 
 # Read in the data
-#churn <- read.csv('telcoData.csv')
+churn <- read.csv('telcoData.csv')
 
 # Split data into train and test set
 intrain <- createDataPartition(churn$Churn,p=0.7,list=FALSE)
@@ -103,6 +104,7 @@ pred5 <- predict(knnModel, churn, type="prob")
 pred5 <- prediction(pred5[,2], churn$Churn)
 roc5 <- performance(pred5, "tpr", "fpr")
 
+
 # Calculate the Area Under Curve (AUC)
 auc5 <- performance(pred5, "auc")
 auc5 <- unlist(slot(auc5, "y.values"))
@@ -138,22 +140,22 @@ mod <- c('Log Model',
          'K-NN')
 
 Accuracy <- c(mat$overall['Accuracy'],
-         mat2$overall['Accuracy'],
-         mat3$overall['Accuracy'],
-         mat4$overall['Accuracy'],
-         mat5$overall['Accuracy'])
+              mat2$overall['Accuracy'],
+              mat3$overall['Accuracy'],
+              mat4$overall['Accuracy'],
+              mat5$overall['Accuracy'])
 
 Recall <- c(mat$byClass['Recall'],
-         mat2$byClass['Recall'],
-         mat3$byClass['Recall'],
-         mat4$byClass['Recall'],
-         mat5$byClass['Recall'])
+            mat2$byClass['Recall'],
+            mat3$byClass['Recall'],
+            mat4$byClass['Recall'],
+            mat5$byClass['Recall'])
 
 Precision <- c(mat$byClass['Precision'],
-         mat2$byClass['Precision'],
-         mat3$byClass['Precision'],
-         mat4$byClass['Precision'],
-         mat5$byClass['Precision'])
+               mat2$byClass['Precision'],
+               mat3$byClass['Precision'],
+               mat4$byClass['Precision'],
+               mat5$byClass['Precision'])
 
 stats <- data.frame(mod, Accuracy, Recall, Precision)
 statsNames <- names(stats)
@@ -188,24 +190,28 @@ wc3 <- head(wc3,5)
 df4 <- data.frame('predictor4' = c('Contract', 'PaperlessBilling','InternetService','PaymentMethod','tenure_group'),
                   'values4' = c(310,280, 200,195,190))
 
-df5 <- data.frame(df5$importance)
+
+##Neural net not compatible with caret::varImp; hence df5 not defined yet
+catch <- tryCatch({df5 <- data.frame(df5$importance)
 predictor5 <- row.names(df5)
 values5 <- df5$No
 xy5 <- data.frame(predictor5, values5)
 wc5 <- arrange(xy5, desc(values5))
-wc5 <- head(wc5,5)
+wc5 <- head(wc5,5)}, error = function(r_err_message){return(TRUE)}
+)
 
 df6 <- data.frame('Variable' = c('Contract','Tenure Group', 'Internet Service', 'Monthly Charge', 'Payment Method', 'Total Charges', 'Paperless Billing', 'Online Security'),
                   'Count' = c(5,4,3,3,3,2,2,1))
-
+source(file = "./utils/overall_plots.r",local = TRUE)
 
 ### STEP 5: Create the selection variables
 
 model_choices <- c('Logistic Regression',
-                  'Decision Tree',
-                  'Random Forest',
-                  'Naive Bayes',
-                  'K-Nearest Neighbor')
+                   'Decision Tree',
+                   'Random Forest',
+                   'Naive Bayes',
+                   'K-Nearest Neighbor',
+                   'All')
 
 colors <- c('blue',
             'orange',
@@ -217,110 +223,111 @@ colors <- c('blue',
 ### Step 6: Build the UI layout
 
 ui = fluidPage(
-
-    mainPanel(
-      uiOutput('uiModel'),
-      tabsetPanel(type = 'pills',
-                  tabPanel(
-                    'ROC',
-                    plotOutput('ROC',
-                               width = '140%')
-                  ),
-                  tabPanel(
-                    'Measures',
-                    plotOutput('Measures',
-                               width = '140%')
-                  ),
-                  tabPanel(
-                    'Importance',
-                    plotOutput('Importance',
-                               width = '140%')
-                  )
-                  
-      )
+  mainPanel(
+    uiOutput('uiModel'),
+    tabsetPanel(type = 'pills',
+                tabPanel(
+                  'ROC',
+                  plotOutput('ROC',
+                             width = '140%')
+                ),
+                tabPanel(
+                  'Measures',
+                  plotOutput('Measures',
+                             width = '140%')
+                ),
+                tabPanel(
+                  'Importance',
+                  plotOutput('Importance',
+                             width = '140%')
+                )
+                
     )
   )
+)
 
 
 
 ### STEP 7: Build the server functionality
 
 server = function(input, output){
-  
   output$uiModel <- renderUI({
     selectInput('model',
                 'Select a model',
                 choices = model_choices,
                 selected = 'Logisitc Regression'
-                ) 
-      })
+    ) 
+  })
   pred <- predict(tModel, churn, type = 'prob')
-      pred <- prediction(pred[,2], churn$Churn)
-      
-      
+  pred <- prediction(pred[,2], churn$Churn)
+  
+  
   output$ROC <- renderPlot({
     if (input$model == 'Logistic Regression') {
       # Display the ROC curve and AUC
       plot(roc,
            colorize = T,
-           main = paste(input$model, "ROC Curve"), 
+           main = paste(input$model, "ROC Curve"),
            lwd = 5,
            cex.main = 2,
            cex.lab = 1.5,
            cex.axis = 1.25)
       abline(a=0, b=1)
       legend(.6, .4, auc, title = "AUC", cex = 1.5)
-    } 
-      else if (input$model == 'Decision Tree') {
-        # Display the ROC curve and AUC
-        plot(roc2,
-             colorize = T,
-             main = paste(input$model, "ROC Curve"),
-             lwd = 5,
-             cex.main = 2,
-             cex.lab = 1.5,
-             cex.axis = 1.25)
-        abline(a=0, b=1)
-        legend(.6, .4, auc2, title = "AUC", cex = 1.5)
-    } 
-      else if (input$model == 'Random Forest') {
-        # Display the ROC curve and AUC
-        plot(roc3,
-             colorize = T,
-             main = paste(input$model, "ROC Curve"),
-             lwd = 5,
-             cex.main = 2,
-             cex.lab = 1.5,
-             cex.axis = 1.25)
-        abline(a=0, b=1)
-        legend(.6, .4, auc3, title = "AUC", cex = 1.5)
-    } 
-      else if (input$model == 'Naive Bayes') {
-        # Display the ROC curve and AUC
-        plot(roc4,
-             colorize = T,
-             main = paste(input$model, "ROC Curve"),
-             lwd = 5,
-             cex.main = 2,
-             cex.lab = 1.5,
-             cex.axis = 1.25)
-        abline(a=0, b=1)
-        legend(.6, .4, auc4, title = "AUC", cex = 1.5)
-    } 
-      else if (input$model == 'K-Nearest Neighbor') {
-        # Display the ROC curve and AUC
-        plot(roc5,
-             colorize = T,
-             main = paste(input$model, "ROC Curve"),
-             lwd = 5,
-             cex.main = 2,
-             cex.lab = 1.5,
-             cex.axis = 1.25)
-        abline(a=0, b=1)
-        legend(.6, .4, auc5, title = "AUC", cex = 1.5)
+    }
+    else if (input$model == 'Decision Tree') {
+      # Display the ROC curve and AUC
+      plot(roc2,
+           colorize = T,
+           main = paste(input$model, "ROC Curve"),
+           lwd = 5,
+           cex.main = 2,
+           cex.lab = 1.5,
+           cex.axis = 1.25)
+      abline(a=0, b=1)
+      legend(.6, .4, auc2, title = "AUC", cex = 1.5)
+    }
+    else if (input$model == 'Random Forest') {
+      # Display the ROC curve and AUC
+      plot(roc3,
+           colorize = T,
+           main = paste(input$model, "ROC Curve"),
+           lwd = 5,
+           cex.main = 2,
+           cex.lab = 1.5,
+           cex.axis = 1.25)
+      abline(a=0, b=1)
+      legend(.6, .4, auc3, title = "AUC", cex = 1.5)
+    }
+    else if (input$model == 'Naive Bayes') {
+      # Display the ROC curve and AUC
+      plot(roc4,
+           colorize = T,
+           main = paste(input$model, "ROC Curve"),
+           lwd = 5,
+           cex.main = 2,
+           cex.lab = 1.5,
+           cex.axis = 1.25)
+      abline(a=0, b=1)
+      legend(.6, .4, auc4, title = "AUC", cex = 1.5)
+    }
+    else if (input$model == 'K-Nearest Neighbor') {
+      # Display the ROC curve and AUC
+      plot(roc5,
+           colorize = T,
+           main = paste(input$model, "ROC Curve"),
+           lwd = 5,
+           cex.main = 2,
+           cex.lab = 1.5,
+           cex.axis = 1.25)
+      abline(a=0, b=1)
+      legend(.6, .4, auc5, title = "AUC", cex = 1.5)
+    }
+    else if (input$model == 'All') {
+      plot_roc_all()
     }
   })
-  
+
   output$Measures <- renderPlot({
     data.m <- melt(stats, id.vars='mod')
     if (input$model == 'Logistic Regression') {
@@ -335,8 +342,8 @@ server = function(input, output){
               legend.text = element_text(size = 14)) +
         scale_y_continuous(breaks = scales::pretty_breaks(n = 20)) +
         geom_text(aes(label=round(value,3)), vjust=8, size=6.5, color = 'white', fontface = 'bold')
-    } 
-      else if (input$model == 'Decision Tree') {
+    }
+    else if (input$model == 'Decision Tree') {
       newT <- subset(data.m, mod == 'Tree Model')
       ggplot(newT, aes(variable, value)) +
         geom_bar(aes(fill = variable), position = "dodge", stat="identity") +
@@ -348,8 +355,8 @@ server = function(input, output){
               legend.text = element_text(size = 14)) +
         scale_y_continuous(breaks = scales::pretty_breaks(n = 20)) +
         geom_text(aes(label=round(value,3)), vjust=8, size=6.5, color = 'white', fontface = 'bold')
-    } 
-      else if (input$model == 'Random Forest') {
+    }
+    else if (input$model == 'Random Forest') {
       newR <- subset(data.m, mod == 'Random Forest')
       ggplot(newR, aes(variable, value)) +
         geom_bar(aes(fill = variable), position = "dodge", stat="identity") +
@@ -361,8 +368,8 @@ server = function(input, output){
               legend.text = element_text(size = 14)) +
         scale_y_continuous(breaks = scales::pretty_breaks(n = 20)) +
         geom_text(aes(label=round(value,3)), vjust=8, size=6.5, color = 'white', fontface = 'bold')
-    } 
-      else if (input$model == 'Naive Bayes') {
+    }
+    else if (input$model == 'Naive Bayes') {
       newN <- subset(data.m, mod == 'Naive Bayes')
       ggplot(newN, aes(variable, value)) +
         geom_bar(aes(fill = variable), position = "dodge", stat="identity") +
@@ -374,8 +381,8 @@ server = function(input, output){
               legend.text = element_text(size = 14)) +
         scale_y_continuous(breaks = scales::pretty_breaks(n = 20)) +
         geom_text(aes(label=round(value,3)), vjust=8, size=6.5, color = 'white', fontface = 'bold')
-    } 
-      else if (input$model == 'K-Nearest Neighbor') {
+    }
+    else if (input$model == 'K-Nearest Neighbor') {
       newK <- subset(data.m, mod == 'K-NN')
       ggplot(newK, aes(variable, value)) +
         geom_bar(aes(fill = variable), position = "dodge", stat="identity") +
@@ -387,9 +394,13 @@ server = function(input, output){
               legend.text = element_text(size = 14)) +
         scale_y_continuous(breaks = scales::pretty_breaks(n = 20)) +
         geom_text(aes(label=round(value,3)), vjust=8, size=6.5, color = 'white', fontface = 'bold')
-    } 
+    }
+    else if (input$model == 'All') {
+      plot_measure_all()
+    }
   })
-  
+
+
   output$Importance <- renderPlot({
     if(input$model == 'Logistic Regression') {
       ggplot(wc, aes(x = predictor, y = values)) +
@@ -401,8 +412,8 @@ server = function(input, output){
               axis.text = element_text(size = 14),
               legend.text = element_text(size = 14)) +
         labs(title = 'Logisitc Regression Variable Importance', fill = 'Predictor')
-    } 
-      else if (input$model == 'Decision Tree') {
+    }
+    else if (input$model == 'Decision Tree') {
       ggplot(wc2, aes(x = predictor2, y = values2)) +
         geom_col(aes(fill = predictor2)) +
         geom_text(aes(label=round(values2,0)), vjust = 2, size = 6.5, color = 'white', fontface = 'bold') +
@@ -412,8 +423,8 @@ server = function(input, output){
               axis.text = element_text(size = 14),
               legend.text = element_text(size = 14)) +
         labs(title = 'Decision Tree Variable Importance', fill = 'Predictor')
-    } 
-      else if (input$model == 'Random Forest') {
+    }
+    else if (input$model == 'Random Forest') {
       ggplot(wc3, aes(x = predictor3, y = values3)) +
         geom_col(aes(fill = predictor3)) +
         geom_text(aes(label=round(values3,0)), vjust = 2, size = 6.5, color = 'white', fontface = 'bold') +
@@ -423,8 +434,8 @@ server = function(input, output){
               axis.text = element_text(size = 14),
               legend.text = element_text(size = 14)) +
         labs(title = 'Random Forest Variable Importance',fill = 'Predictor')
-    } 
-      else if (input$model == 'Naive Bayes') {
+    }
+    else if (input$model == 'Naive Bayes') {
       ggplot(df4, aes(x = predictor4, y = values4)) +
         geom_col(aes(fill = predictor4)) +
         geom_text(aes(label=round(values4,0)), vjust = 2, size = 6.5, color = 'white', fontface = 'bold') +
@@ -434,20 +445,34 @@ server = function(input, output){
               axis.text = element_text(size = 14),
               legend.text = element_text(size = 14)) +
         labs(title = 'Naive Bayes Variable Importance', fill = 'Predictor')
-    } 
-      else if (input$model == 'K-Nearest Neighbor') {
-        ggplot(wc5, aes(x = predictor5, y = values5)) +
-          geom_col(aes(fill = predictor5)) +
-          geom_text(aes(label=round(values5,0)), vjust = 2, size = 6.5, color = 'white', fontface = 'bold') +
-          theme(axis.title = element_blank(),
-                title = element_text(size = 20, face = 'bold'),
-                plot.title = element_text(hjust = 0.5),
-                axis.text = element_text(size = 14),
-                legend.text = element_text(size = 14)) +
-          labs(title = 'K-Nearest Neighbor Variable Importance', fill = 'Predictor')
-    } 
-  })
-
+    }
+    else if (input$model == 'K-Nearest Neighbor') {
+      ## Remove if(catch) once error is fixed
+      if(catch){
+      img <- image_read("error_message.png")
+      image_ggplot(img)
+      }
+        else{
+          ggplot(wc5, aes(x = predictor5, y = values5)) +
+            geom_col(aes(fill = predictor5)) +
+            geom_text(aes(label=round(values5,0)), vjust = 2, size = 6.5, color = 'white', fontface = 'bold') +
+            theme(axis.title = element_blank(),
+                  title = element_text(size = 20, face = 'bold'),
+                  plot.title = element_text(hjust = 0.5),
+                  axis.text = element_text(size = 14),
+                  legend.text = element_text(size = 14)) +
+            labs(title = 'K-Nearest Neighbor Variable Importance', fill = 'Predictor')
+        }
+    }
+    else if (input$model == 'All') {
+      plot_predictors_all()
+    }
+  }, height =reactive({if(input$model == 'K-Nearest Neighbor')1100
+    else "auto"})
+  )
+  
+  
+  
 }
 
 ### STEP 8: Run the application

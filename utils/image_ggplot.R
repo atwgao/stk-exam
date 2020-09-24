@@ -8,3 +8,4 @@ image_ggplot <- function(image, interpolate = FALSE) {
     ggplot2::annotation_raster(image, 0, info$width, -info$height, 0, interpolate = interpolate) +
     NULL
 }
+
