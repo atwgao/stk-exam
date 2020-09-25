@@ -17,10 +17,22 @@ library(reshape)
 library(png)
 library(grid)
 library(magick)
+
+image_ggplot <- function(image, interpolate = FALSE) {
+  info <- image_info(image)
+  ggplot2::ggplot(data.frame(x = 0, y = 0), ggplot2::aes_string('x', 'y')) +
+    ggplot2::geom_blank() +
+    ggplot2::theme_void() +
+    ggplot2::scale_y_reverse() +
+    ggplot2::coord_fixed(expand = FALSE, xlim = c(0, info$width), ylim = c(0, info$height)) +
+    ggplot2::annotation_raster(image, 0, info$width, -info$height, 0, interpolate = interpolate) +
+    NULL
+}
+
 ### STEP 1: Prep the Data
 
 # Read in the data
-#churn <- read.csv('telcoData.csv')
+churn <- read.csv('C:/Users/anika/Documents/2020/University/STK 880/Dr Gao Maribe/Exam/Section1/telcoData.csv')
 
 # Split data into train and test set
 intrain <- createDataPartition(churn$Churn,p=0.7,list=FALSE)
@@ -109,6 +121,7 @@ auc5 <- unlist(slot(auc5, "y.values"))
 auc5 <- round(auc5, 3)
 
 
+
 ### STEP 3: Predict with the models and capture the measures
 # Test/predict the model on the testing set
 testing$Churn <- as.factor(testing$Churn)
@@ -130,6 +143,9 @@ mat4 <- confusionMatrix(p4, testing$Churn, positive = 'Yes', mode = 'prec_recall
 # Test/predict the model on the testing set
 p5 <- predict(knnModel, testing)
 mat5 <- confusionMatrix(p5, testing$Churn, positive = 'Yes', mode = 'prec_recall')
+
+
+
 
 mod <- c('Log Model',
          'Tree Model',
@@ -188,12 +204,35 @@ wc3 <- head(wc3,5)
 df4 <- data.frame('predictor4' = c('Contract', 'PaperlessBilling','InternetService','PaymentMethod','tenure_group'),
                   'values4' = c(310,280, 200,195,190))
 
+dfA <- cbind(predictor=c(wc$predictor, wc2$predictor2, wc3$predictor3, df4$predictor4), value=c(wc$values, wc2$values2, wc3$values3, df4$values4))
+modA <- data.frame(mod=c(rep("Logistic",5),rep("Decision Tree",5),rep("Random Forest",5),rep("Naive Bayes",5)))
+dfAll <- cbind(modA, dfA)
+dfAll$value <- as.numeric(dfAll$value)
+
+mstr.ErrMsg <- tryCatch({
+
 df5 <- data.frame(df5$importance)
 predictor5 <- row.names(df5)
 values5 <- df5$No
 xy5 <- data.frame(predictor5, values5)
 wc5 <- arrange(xy5, desc(values5))
 wc5 <- head(wc5,5)
+
+mstr.ErrMsg <- ""
+
+#Catch block to report an error
+},
+
+error = function(err) {
+  
+  #Print error message if run from console
+  try(print(err))
+  
+  #Return error message
+  return(err$message)
+  
+})
+
 
 df6 <- data.frame('Variable' = c('Contract','Tenure Group', 'Internet Service', 'Monthly Charge', 'Payment Method', 'Total Charges', 'Paperless Billing', 'Online Security'),
                   'Count' = c(5,4,3,3,3,2,2,1))
@@ -205,7 +244,8 @@ model_choices <- c('Logistic Regression',
                   'Decision Tree',
                   'Random Forest',
                   'Naive Bayes',
-                  'K-Nearest Neighbor')
+                  'K-Nearest Neighbor',
+                  'All')
 
 colors <- c('blue',
             'orange',
@@ -235,6 +275,7 @@ ui = fluidPage(
                     'Importance',
                     plotOutput('Importance',
                                width = '140%')
+                    
                   )
                   
       )
@@ -251,7 +292,7 @@ server = function(input, output){
     selectInput('model',
                 'Select a model',
                 choices = model_choices,
-                selected = 'Logisitc Regression'
+                selected = 'Logistic Regression'
                 ) 
       })
   pred <- predict(tModel, churn, type = 'prob')
@@ -319,6 +360,58 @@ server = function(input, output){
         abline(a=0, b=1)
         legend(.6, .4, auc5, title = "AUC", cex = 1.5)
     }
+      else if (input$model == 'All') {
+        # Display the ROC curve and AUC
+        plot(roc,
+             # colorize = T,
+             main = paste(input$model, "ROC Curve"), 
+             lwd = 3,
+             cex.main = 2,
+             cex.lab = 1.5,
+             cex.axis = 1.25,
+             col = 2)
+        plot(roc2, add = T, 
+             # colorize = T,
+             # main = paste(input$model, "ROC Curve"), 
+             lwd = 3,
+             cex.main = 2,
+             cex.lab = 1.5,
+             cex.axis = 1.25,
+             col = 3)
+        plot(roc3, add = T, 
+             # colorize = T,
+             # main = paste(input$model, "ROC Curve"), 
+             lwd = 3,
+             cex.main = 2,
+             cex.lab = 1.5,
+             cex.axis = 1.25,
+             col = 4)
+        plot(roc4, add = T, 
+             # colorize = T,
+             # main = paste(input$model, "ROC Curve"), 
+             lwd = 3,
+             cex.main = 2,
+             cex.lab = 1.5,
+             cex.axis = 1.25,
+             col = 5)
+        plot(roc5, add = T, 
+             # colorize = T,
+             # main = paste(input$model, "ROC Curve"), 
+             lwd = 3,
+             cex.main = 2,
+             cex.lab = 1.5,
+             cex.axis = 1.25,
+             col = 6)
+        abline(a=0, b=1)
+        legend(.6, .4, c("Logistic Regression", 
+                         "Decision Tree", 
+                         "Random Forest",
+                         "Naive Bayes",
+                         "K-Nearest Neighbor"), title="Model", cex=0.8, pt.cex = 1, col=c(2,3,4,5,6), lty = c(1,1,1,1,1) ) 
+        legend(.8, .4, c(auc,auc2,auc3,auc4,auc5), title="AUC",cex=0.8, pt.cex = 1, col=c(2,3,4,5,6), lty = c(1,1,1,1,1) ) 
+        
+    }
+  
   })
   
   output$Measures <- renderPlot({
@@ -336,7 +429,7 @@ server = function(input, output){
         scale_y_continuous(breaks = scales::pretty_breaks(n = 20)) +
         geom_text(aes(label=round(value,3)), vjust=8, size=6.5, color = 'white', fontface = 'bold')
     } 
-      else if (input$model == 'Decision Tree') {
+    else if (input$model == 'Decision Tree') {
       newT <- subset(data.m, mod == 'Tree Model')
       ggplot(newT, aes(variable, value)) +
         geom_bar(aes(fill = variable), position = "dodge", stat="identity") +
@@ -349,7 +442,7 @@ server = function(input, output){
         scale_y_continuous(breaks = scales::pretty_breaks(n = 20)) +
         geom_text(aes(label=round(value,3)), vjust=8, size=6.5, color = 'white', fontface = 'bold')
     } 
-      else if (input$model == 'Random Forest') {
+    else if (input$model == 'Random Forest') {
       newR <- subset(data.m, mod == 'Random Forest')
       ggplot(newR, aes(variable, value)) +
         geom_bar(aes(fill = variable), position = "dodge", stat="identity") +
@@ -362,7 +455,7 @@ server = function(input, output){
         scale_y_continuous(breaks = scales::pretty_breaks(n = 20)) +
         geom_text(aes(label=round(value,3)), vjust=8, size=6.5, color = 'white', fontface = 'bold')
     } 
-      else if (input$model == 'Naive Bayes') {
+    else if (input$model == 'Naive Bayes') {
       newN <- subset(data.m, mod == 'Naive Bayes')
       ggplot(newN, aes(variable, value)) +
         geom_bar(aes(fill = variable), position = "dodge", stat="identity") +
@@ -375,7 +468,7 @@ server = function(input, output){
         scale_y_continuous(breaks = scales::pretty_breaks(n = 20)) +
         geom_text(aes(label=round(value,3)), vjust=8, size=6.5, color = 'white', fontface = 'bold')
     } 
-      else if (input$model == 'K-Nearest Neighbor') {
+    else if (input$model == 'K-Nearest Neighbor') {
       newK <- subset(data.m, mod == 'K-NN')
       ggplot(newK, aes(variable, value)) +
         geom_bar(aes(fill = variable), position = "dodge", stat="identity") +
@@ -387,6 +480,21 @@ server = function(input, output){
               legend.text = element_text(size = 14)) +
         scale_y_continuous(breaks = scales::pretty_breaks(n = 20)) +
         geom_text(aes(label=round(value,3)), vjust=8, size=6.5, color = 'white', fontface = 'bold')
+    } 
+    else if (input$model == 'All') {
+      # newK <- subset(data.m, mod == 'K-NN')
+      newA <- with(data.m, data.m[order(variable, mod),])
+      ggplot(newA, aes(mod, value)) +
+        facet_grid(~variable)+
+        geom_bar(aes(fill = variable), position = "dodge", stat="identity") +
+        labs(title = 'All Measures', fill = 'Measure') +
+        theme(axis.title = element_blank(),
+              title = element_text(size = 20, face = 'bold'),
+              plot.title = element_text(hjust = 0.5),
+              axis.text = element_text(size = 14, angle=90),
+              legend.text = element_text(size = 14)) +
+        scale_y_continuous(breaks = scales::pretty_breaks(n = 20)) +
+        geom_text(aes(label=round(value,3)), vjust=8, size=5, color = 'white', fontface = 'bold')
     } 
   })
   
@@ -435,19 +543,27 @@ server = function(input, output){
               legend.text = element_text(size = 14)) +
         labs(title = 'Naive Bayes Variable Importance', fill = 'Predictor')
     } 
-      else if (input$model == 'K-Nearest Neighbor') {
-        ggplot(wc5, aes(x = predictor5, y = values5)) +
-          geom_col(aes(fill = predictor5)) +
-          geom_text(aes(label=round(values5,0)), vjust = 2, size = 6.5, color = 'white', fontface = 'bold') +
-          theme(axis.title = element_blank(),
-                title = element_text(size = 20, face = 'bold'),
-                plot.title = element_text(hjust = 0.5),
-                axis.text = element_text(size = 14),
-                legend.text = element_text(size = 14)) +
-          labs(title = 'K-Nearest Neighbor Variable Importance', fill = 'Predictor')
-    } 
-  })
+    else if (input$model == 'K-Nearest Neighbor') {
+      image <- magick::image_read("C:/Users/anika/Desktop/stk880_exam/section1/stk-exam/error_message.png")
+      image_ggplot(image, interpolate=FALSE)
+    }
+    else if (input$model == 'All') {
+      dfAll <- with(dfAll, dfAll[order(mod,predictor),])
+      ggplot(dfAll, aes(predictor, value)) +
+        facet_grid(~mod)+
+        geom_bar(aes(fill = mod), position = "dodge", stat="identity") +
+        labs(title = 'Variable Importance', fill = 'Model') +
+        theme(axis.title = element_blank(),
+              title = element_text(size = 20, face = 'bold'),
+              plot.title = element_text(hjust = 0.5),
+              axis.text = element_text(size = 14, angle=90),
+              legend.text = element_text(size = 14) +
+        scale_y_continuous(breaks = scales::pretty_breaks(n = 20)) +
+        geom_text(aes(label=round(value,3)), vjust=8, size=5, color = 'white', fontface = 'bold', angle=90))
+    }       
 
+  })
+  
 }
 
 ### STEP 8: Run the application
