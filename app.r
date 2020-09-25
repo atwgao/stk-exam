@@ -20,8 +20,7 @@ library(magick)
 ### STEP 1: Prep the Data
 
 # Read in the data
-#churn <- read.csv('telcoData.csv')
-
+churn <- read.csv('telcoData.csv')
 # Split data into train and test set
 intrain <- createDataPartition(churn$Churn,p=0.7,list=FALSE)
 set.seed(2017) # so it is repeatable
@@ -188,13 +187,16 @@ wc3 <- head(wc3,5)
 df4 <- data.frame('predictor4' = c('Contract', 'PaperlessBilling','InternetService','PaymentMethod','tenure_group'),
                   'values4' = c(310,280, 200,195,190))
 
-df5 <- data.frame(df5$importance)
-predictor5 <- row.names(df5)
-values5 <- df5$No
-xy5 <- data.frame(predictor5, values5)
-wc5 <- arrange(xy5, desc(values5))
-wc5 <- head(wc5,5)
-
+err5 <- tryCatch({
+        df5 <- data.frame(df5$importance)
+        predictor5 <- row.names(df5)
+        values5 <- df5$No
+        xy5 <- data.frame(predictor5, values5)
+        wc5 <- arrange(xy5, desc(values5))
+        wc5 <- head(wc5,5)
+        
+        }, error = function(e) e)
+        
 df6 <- data.frame('Variable' = c('Contract','Tenure Group', 'Internet Service', 'Monthly Charge', 'Payment Method', 'Total Charges', 'Paperless Billing', 'Online Security'),
                   'Count' = c(5,4,3,3,3,2,2,1))
 
@@ -205,13 +207,15 @@ model_choices <- c('Logistic Regression',
                   'Decision Tree',
                   'Random Forest',
                   'Naive Bayes',
-                  'K-Nearest Neighbor')
+                  'K-Nearest Neighbor',
+                  'All')
 
 colors <- c('blue',
             'orange',
             'green',
             'red',
-            'purple')
+            'purple',
+            'grey')
 
 
 ### Step 6: Build the UI layout
@@ -318,11 +322,66 @@ server = function(input, output){
              cex.axis = 1.25)
         abline(a=0, b=1)
         legend(.6, .4, auc5, title = "AUC", cex = 1.5)
-    }
+      }
+        else if (input$model == 'All') {
+         par(mfrow=c(2,3))
+         plot(roc,
+              colorize = T,
+              main = paste("Logistic Regression ROC Curve"), 
+              lwd = 5,
+              cex.main = 2,
+              cex.lab = 1.5,
+              cex.axis = 1.25)
+         abline(a=0, b=1)
+         legend(.55, .4, auc, title = "AUC", cex = 1)
+                  
+         plot(roc2,
+              colorize = T,
+              main = paste("Decision Tree ROC Curve"),
+              lwd = 5,
+              cex.main = 2,
+              cex.lab = 1.5,
+              cex.axis = 1.25)
+         abline(a=0, b=1)
+         legend(.55, .4, auc2, title = "AUC", cex = 1)
+                 
+         plot(roc3,
+              colorize = T,
+              main = paste("Random Forest ROC Curve"),
+              lwd = 5,
+              cex.main = 2,
+              cex.lab = 1.5,
+              cex.axis = 1.25)
+              abline(a=0, b=1)
+              legend(.55, .4, auc3, title = "AUC", cex = 1)
+              
+         plot(roc4,
+              colorize = T,
+              main = paste("Naive Bayes ROC Curve"),
+              lwd = 5,
+              cex.main = 2,
+              cex.lab = 1.5,
+              cex.axis = 1.25)
+         abline(a=0, b=1)
+         legend(.55, .4, auc4, title = "AUC", cex = 1)
+              
+         plot(roc5,
+              colorize = T,
+              main = paste("K-Nearest Neighbor ROC Curve"),
+              lwd = 5,
+              cex.main = 2,
+              cex.lab = 1.5,
+              cex.axis = 1.25)
+          abline(a=0, b=1)
+          legend(.55, .4, auc5, title = "AUC", cex = 1)
+                  
+          }
   })
   
   output$Measures <- renderPlot({
     data.m <- melt(stats, id.vars='mod')
+    data.m$mod <- factor(data.m$mod
+                         , levels = c("Log Model", "Tree Model", "Random Forest", "Naive Bayes", "K-NN"))
     if (input$model == 'Logistic Regression') {
       newL <- subset(data.m, mod == 'Log Model')
       ggplot(newL, aes(variable, value)) +
@@ -387,7 +446,21 @@ server = function(input, output){
               legend.text = element_text(size = 14)) +
         scale_y_continuous(breaks = scales::pretty_breaks(n = 20)) +
         geom_text(aes(label=round(value,3)), vjust=8, size=6.5, color = 'white', fontface = 'bold')
-    } 
+      }
+    else if(input$model == "All") {
+            ggplot(data.m, aes(variable, value)) +
+                    geom_bar(aes(fill = variable), position = "dodge", stat="identity") +
+                    labs(title = 'All Model Measures', fill = 'Measure') +
+                    theme(axis.title = element_blank(),
+                          title = element_text(size = 20, face = 'bold'),
+                          plot.title = element_text(hjust = 0.5),
+                          axis.text = element_text(size = 14),
+                          legend.text = element_text(size = 14),
+                          legend.position = "top") +
+                    scale_y_continuous(breaks = scales::pretty_breaks(n = 10)) +
+                    geom_text(aes(y = value - 0.05, label=round(value,3)), size=5, color = 'white', fontface = 'bold')+
+                    facet_wrap(~mod, nrow = 2, ncol = 3)
+    }
   })
   
   output$Importance <- renderPlot({
@@ -435,17 +508,69 @@ server = function(input, output){
               legend.text = element_text(size = 14)) +
         labs(title = 'Naive Bayes Variable Importance', fill = 'Predictor')
     } 
-      else if (input$model == 'K-Nearest Neighbor') {
-        ggplot(wc5, aes(x = predictor5, y = values5)) +
-          geom_col(aes(fill = predictor5)) +
-          geom_text(aes(label=round(values5,0)), vjust = 2, size = 6.5, color = 'white', fontface = 'bold') +
-          theme(axis.title = element_blank(),
-                title = element_text(size = 20, face = 'bold'),
-                plot.title = element_text(hjust = 0.5),
-                axis.text = element_text(size = 14),
-                legend.text = element_text(size = 14)) +
-          labs(title = 'K-Nearest Neighbor Variable Importance', fill = 'Predictor')
-    } 
+      else if (input$model == 'K-Nearest Neighbor' & class(err5)[1] == "simpleError") {
+                image <- magick::image_read("error_message.png")
+                source(paste0(getwd(),"/utils/image_ggplot.R"))
+                image_ggplot(image = image)
+    }
+      else if(input$model == 'K-Nearest Neighbor' & class(err5)[1] != "simpleError")  {
+              ggplot(df5, aes(x = predictor5, y = values5)) +
+                      geom_col(aes(fill = predictor5)) +
+                      geom_text(aes(label=round(values5,0)), vjust = 2, size = 6.5, color = 'white', fontface = 'bold') +
+                      theme(axis.title = element_blank(),
+                            title = element_text(size = 20, face = 'bold'),
+                            plot.title = element_text(hjust = 0.5),
+                            axis.text = element_text(size = 14),
+                            legend.text = element_text(size = 14)) +
+                      labs(title = 'K-Nearest Neighbor Variable Importance', fill = 'Predictor')
+      }   
+      else if (input$model == "All") {
+              gg1 <-        ggplot(wc, aes(x = predictor, y = values)) +
+                      geom_col(aes(fill = predictor)) +
+                      geom_text(aes(label=round(values,2)), vjust = 2, size = 6.5, color = 'white', fontface = 'bold') +
+                      theme(axis.title = element_blank(),
+                            title = element_text(size = 20, face = 'bold'),
+                            plot.title = element_text(hjust = 0.5),
+                            axis.text = element_text(size = 8.5),
+                            legend.position = "none") +
+                      labs(title = 'Logisitc Regression Variable Importance', fill = 'Predictor')
+              
+              gg2 <-         ggplot(wc2, aes(x = predictor2, y = values2)) +
+                      geom_col(aes(fill = predictor2)) +
+                      geom_text(aes(label=round(values2,0)), vjust = 2, size = 6.5, color = 'white', fontface = 'bold') +
+                      theme(axis.title = element_blank(),
+                            title = element_text(size = 20, face = 'bold'),
+                            plot.title = element_text(hjust = 0.5),
+                            axis.text = element_text(size = 8.5),
+                            legend.position = "none") +
+                      labs(title = 'Decision Tree Variable Importance', fill = 'Predictor')
+              
+              gg3 <-        ggplot(wc3, aes(x = predictor3, y = values3)) +
+                      geom_col(aes(fill = predictor3)) +
+                      geom_text(aes(label=round(values3,0)), vjust = 2, size = 6.5, color = 'white', fontface = 'bold') +
+                      theme(axis.title = element_blank(),
+                            title = element_text(size = 20, face = 'bold'),
+                            plot.title = element_text(hjust = 0.5),
+                            axis.text = element_text(size = 8.5),
+                            legend.position = "none") +
+                      labs(title = 'Random Forest Variable Importance',fill = 'Predictor')
+              gg4 <-         ggplot(df4, aes(x = predictor4, y = values4)) +
+                      geom_col(aes(fill = predictor4)) +
+                      geom_text(aes(label=round(values4,0)), vjust = 2, size = 6.5, color = 'white', fontface = 'bold') +
+                      theme(axis.title = element_blank(),
+                            title = element_text(size = 20, face = 'bold'),
+                            plot.title = element_text(hjust = 0.5),
+                            axis.text = element_text(size = 8.5),
+                            legend.position = "none") +
+                      labs(title = 'Naive Bayes Variable Importance', fill = 'Predictor')
+              image <- magick::image_read("error_message.png")
+              source(paste0(getwd(),"/utils/image_ggplot.R"))
+              gg5 <-        image_ggplot(image = image)
+              
+              gridExtra::grid.arrange(gg1, gg2, gg3, gg4, gg5, ncol = 3, nrow = 2)
+              
+      }    
+       
   })
 
 }
