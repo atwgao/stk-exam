@@ -21,7 +21,6 @@ library(magick)
 
 # Read in the data
 churn <- read.csv('telcoData.csv')
-
 # Split data into train and test set
 intrain <- createDataPartition(churn$Churn,p=0.7,list=FALSE)
 set.seed(2017) # so it is repeatable
